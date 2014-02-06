@@ -1,0 +1,7 @@
+<library path="lib/libcob_navigation_followme_global">
+  <class name="cob_navigation_followme_global/GlobalPlaner" type="COBFollowme::GlobalPlanner" base_class_type="nav_core::BaseGlobalPlanner">
+    <description>
+	Simple global planner for "Follow Me" RoboCup@Home scenario
+    </description>
+  </class>
+</library>
