@@ -11,8 +11,6 @@
 		<remap from="odom" to="base_controller/odometry"/>
 		<param name="controller_frequency" value="20"/>
 
- 		<!-- Use FollowMe global planner -->
-		<param name="base_global_planner" value="cob_navigation_followme_global/GlobalPlaner"/>
  		<!-- Use the dwa local planner for the PR2 -->
  		<param name="base_local_planner" value="dwa_local_planner/DWAPlannerROS" />
 
@@ -20,11 +18,11 @@
 		<rosparam file="$(find cob_navigation_config)/$(arg robot)/costmap_common_params.yaml" command="load" ns="global_costmap" />
 		<rosparam file="$(find cob_navigation_config)/$(arg robot)/costmap_common_params.yaml" command="load" ns="local_costmap" />
 
-		<!-- costmap -->
+		<!--- load global navigation specific parameters -->
 		<rosparam file="$(find cob_navigation_global)/config/local_costmap_params.yaml" command="load" />
-		<!--rosparam file="$(find cob_navigation_global)/config/global_costmap_params.yaml" command="load" />
+		<rosparam file="$(find cob_navigation_global)/config/global_costmap_params_followme.yaml" command="load" />
 
-		<!-- load planner parameters -->
+		<!--- load planner parameters -->
 		<rosparam file="$(find cob_navigation_config)/$(arg robot)/base_local_planner_params.yaml" command="load" />
  		<rosparam file="$(find cob_navigation_config)/$(arg robot)/dwa_local_planner.yaml" command="load" ns="DWAPlannerROS" />
 
