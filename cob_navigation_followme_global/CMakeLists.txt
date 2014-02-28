@@ -28,7 +28,7 @@ catkin_package(
         nav_core
 )
 
-add_library(cob_navigation_followme_global src/cob_followme_global_planner.cpp)
+add_library(cob_navigation_followme_global src/cob_navigation_followme_global.cpp)
 target_link_libraries(cob_navigation_followme_global
     ${catkin_LIBRARIES}
     )
