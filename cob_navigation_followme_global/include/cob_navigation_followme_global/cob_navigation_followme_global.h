@@ -16,6 +16,9 @@
 
 #include <base_local_planner/world_model.h>
 #include <base_local_planner/costmap_model.h>
+#include <nav_msgs/Path.h>
+
+#define FOLLOWME_PATH_TOPIC "/followme/path"
 
 namespace cob_navigation_followme_global {
   /**
@@ -51,6 +54,7 @@ namespace cob_navigation_followme_global {
        */
       bool makePlan(const geometry_msgs::PoseStamped& start, 
           const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
+      void makePlanFromTracker(std::vector<geometry_msgs::PoseStamped>& plan);
 
     private:
       costmap_2d::Costmap2DROS* costmap_ros_;
@@ -68,6 +72,9 @@ namespace cob_navigation_followme_global {
       double footprintCost(double x_i, double y_i, double theta_i);
 
       bool initialized_;
+      void pathCB(const nav_msgs::Path& path);
+      nav_msgs::Path cur_path;
+      ros::Subscriber path_topic;
   };
 };  
 #endif

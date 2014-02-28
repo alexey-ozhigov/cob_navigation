@@ -45,6 +45,7 @@ using namespace std;
 PLUGINLIB_EXPORT_CLASS(cob_navigation_followme_global::COBGlobalPlanner, nav_core::BaseGlobalPlanner)
 
 namespace cob_navigation_followme_global {
+
   void makeLinearPlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,
                       std::vector<geometry_msgs::PoseStamped>& plan){
 
@@ -103,8 +104,24 @@ namespace cob_navigation_followme_global {
            }
          */
     }
-}
+  }
+
+  void COBGlobalPlanner::makePlanFromTracker(std::vector<geometry_msgs::PoseStamped>& plan){
+    plan.clear();
+    for (int i = 0; i < cur_path.poses.size(); i++)
+        plan.push_back(cur_path.poses[i]);
+  }
  
+  void COBGlobalPlanner::pathCB(const nav_msgs::Path& path){
+    ROS_INFO("received path: %lu segment(-s)", path.poses.size());
+    /*
+    cur_path.header = path.header;
+    cur_path.clear();
+    for (int i = 0; i < path.poses.size(); i++)
+        cur_path.poses.push_back(path.poses[i]);
+    */
+    cur_path = path;
+  }
   string Goal2Str(const geometry_msgs::PoseStamped& goal){
       stringstream sstr;
       sstr << '('
@@ -148,6 +165,7 @@ namespace cob_navigation_followme_global {
       private_nh.param("step_size", step_size_, costmap_->getResolution());
       private_nh.param("min_dist_from_robot", min_dist_from_robot_, 0.10);
       world_model_ = new base_local_planner::CostmapModel(*costmap_); 
+      path_topic = private_nh.subscribe(FOLLOWME_PATH_TOPIC, 1, &COBGlobalPlanner::pathCB, this);
 
       initialized_ = true;
     }
@@ -192,7 +210,10 @@ namespace cob_navigation_followme_global {
       return false;
     }
 
-    makeLinearPlan(start, goal, plan);
+    if (cur_path.poses.size() == 0)
+        makeLinearPlan(start, goal, plan);
+    else
+        makePlanFromTracker(plan);
     //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
     ROS_INFO("Plan from %s to %s: %s", Goal2Str(start).c_str(), Goal2Str(goal).c_str(), Plan2Str(plan).c_str());
 
