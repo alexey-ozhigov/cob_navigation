@@ -108,19 +108,12 @@ namespace cob_navigation_followme_global {
 
   void COBGlobalPlanner::makePlanFromTracker(std::vector<geometry_msgs::PoseStamped>& plan){
     plan.clear();
-    for (int i = 0; i < cur_path.poses.size(); i++)
-        plan.push_back(cur_path.poses[i]);
+    for (int i = 0; i < poses.size(); i++)
+        plan.push_back(poses[i]);
   }
  
-  void COBGlobalPlanner::pathCB(const nav_msgs::Path& path){
-    ROS_INFO("received path: %lu segment(-s)", path.poses.size());
-    /*
-    cur_path.header = path.header;
-    cur_path.clear();
-    for (int i = 0; i < path.poses.size(); i++)
-        cur_path.poses.push_back(path.poses[i]);
-    */
-    cur_path = path;
+  void COBGlobalPlanner::poseCB(const geometry_msgs::PoseStamped& pose){
+      poses.push_back(pose);
   }
   string Goal2Str(const geometry_msgs::PoseStamped& goal){
       stringstream sstr;
@@ -165,7 +158,7 @@ namespace cob_navigation_followme_global {
       private_nh.param("step_size", step_size_, costmap_->getResolution());
       private_nh.param("min_dist_from_robot", min_dist_from_robot_, 0.10);
       world_model_ = new base_local_planner::CostmapModel(*costmap_); 
-      path_topic = private_nh.subscribe(FOLLOWME_PATH_TOPIC, 1, &COBGlobalPlanner::pathCB, this);
+      pose_topic = private_nh.subscribe(FOLLOWME_POSE_TOPIC, 1, &COBGlobalPlanner::poseCB, this);
 
       initialized_ = true;
     }
@@ -210,7 +203,7 @@ namespace cob_navigation_followme_global {
       return false;
     }
 
-    if (cur_path.poses.size() == 0)
+    if (poses.size() == 0)
         makeLinearPlan(start, goal, plan);
     else
         makePlanFromTracker(plan);
