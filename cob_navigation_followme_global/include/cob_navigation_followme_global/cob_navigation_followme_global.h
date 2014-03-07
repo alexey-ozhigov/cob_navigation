@@ -17,7 +17,7 @@
 #include <base_local_planner/world_model.h>
 #include <base_local_planner/costmap_model.h>
 
-#define FOLLOWME_POSE_TOPIC "/followme/pose"
+#define FOLLOWME_POSE_TOPIC "/followme/guide_pose"
 
 namespace cob_navigation_followme_global {
   /**
@@ -53,7 +53,8 @@ namespace cob_navigation_followme_global {
        */
       bool makePlan(const geometry_msgs::PoseStamped& start, 
           const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
-      void makePlanFromTracker(std::vector<geometry_msgs::PoseStamped>& plan);
+      void makePlanFromTracker(const geometry_msgs::PoseStamped& start, 
+          const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
 
     private:
       costmap_2d::Costmap2DROS* costmap_ros_;
