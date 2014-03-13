@@ -170,6 +170,7 @@ namespace cob_navigation_followme_global {
       private_nh.param("min_dist_from_robot", min_dist_from_robot_, 0.10);
       world_model_ = new base_local_planner::CostmapModel(*costmap_); 
       pose_topic = private_nh.subscribe(FOLLOWME_POSE_TOPIC, 1, &COBGlobalPlanner::poseCB, this);
+      path_log_topic = private_nh.advertise<nav_msgs::Path>(FOLLOWME_PATH_LOG_TOPIC, 5);
 
       initialized_ = true;
     }
@@ -222,6 +223,10 @@ namespace cob_navigation_followme_global {
     else
         makePlanFromTracker(start, goal, plan);
     //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
+    nav_msgs::Path path_log_msg;
+    path_log_msg.header.stamp = ros::Time::now();
+    path_log_msg.poses = plan;
+    path_log_topic.publish(path_log_msg);
     string plan_str = Plan2Str(plan);
     ROS_INFO("Plan (len %lu): %s", plan.size(), plan_str.c_str());
 

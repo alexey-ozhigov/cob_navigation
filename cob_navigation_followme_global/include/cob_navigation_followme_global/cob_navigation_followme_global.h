@@ -8,6 +8,7 @@
 #include <costmap_2d/costmap_2d.h>
 #include <nav_core/base_global_planner.h>
 
+#include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <angles/angles.h>
 
@@ -18,6 +19,7 @@
 #include <base_local_planner/costmap_model.h>
 
 #define FOLLOWME_POSE_TOPIC "/followme/guide_pose"
+#define FOLLOWME_PATH_LOG_TOPIC "/followme/path_log"
 
 namespace cob_navigation_followme_global {
   /**
@@ -75,6 +77,7 @@ namespace cob_navigation_followme_global {
       void poseCB(const geometry_msgs::PoseStamped& pose);
       std::vector<geometry_msgs::PoseStamped> poses;
       ros::Subscriber pose_topic;
+      ros::Publisher path_log_topic;
   };
 };  
 #endif
