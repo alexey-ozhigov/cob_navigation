@@ -210,12 +210,17 @@ namespace cob_navigation_followme_global {
       return false;
     }
 
-    if (cur_path.poses.size() == 0)
+    const char* prefix = " ";
+    if (cur_path.poses.size() == 0) {
         makeLinearPlan(start, goal, plan);
-    else
+        prefix = "Linear";
+    }
+    else {
         makePlanFromTracker(plan);
+        prefix = "Tracked";
+    }
     //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
-    ROS_INFO("Plan from %s to %s: %s", Goal2Str(start).c_str(), Goal2Str(goal).c_str(), Plan2Str(plan).c_str());
+    ROS_INFO("%s plan from %s to %s: %s", prefix, Goal2Str(start).c_str(), Goal2Str(goal).c_str(), Plan2Str(plan).c_str());
 
     return true;
   }
