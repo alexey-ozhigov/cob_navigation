@@ -38,6 +38,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <string>
 #include <sstream>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -45,6 +46,32 @@ using namespace std;
 PLUGINLIB_EXPORT_CLASS(cob_navigation_followme_global::COBGlobalPlanner, nav_core::BaseGlobalPlanner)
 
 namespace cob_navigation_followme_global {
+  string Goal2Str(const geometry_msgs::PoseStamped& goal){
+      stringstream sstr;
+      sstr << '('
+          << goal.pose.position.x << ", "
+          << goal.pose.position.y << ", "
+          << goal.pose.position.z << ", "
+          << goal.pose.orientation.x << ", "
+          << goal.pose.orientation.y << ", "
+          << goal.pose.orientation.z << ", "
+          << goal.pose.orientation.w << ") ";
+      return sstr.str();
+  }
+  string Plan2Str(const std::vector<geometry_msgs::PoseStamped>& plan){
+    stringstream sstr;
+    for (int i = 0; i < plan.size(); i++)
+        sstr << '('
+             << plan[i].pose.position.x << ", "
+             << plan[i].pose.position.y << ", "
+             << plan[i].pose.position.z << ", "
+             << plan[i].pose.orientation.x << ", "
+             << plan[i].pose.orientation.y << ", "
+             << plan[i].pose.orientation.z << ", "
+             << plan[i].pose.orientation.w << ") ";
+    sstr << endl;
+    return sstr.str();
+  }
 
   void makeLinearPlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,
                       std::vector<geometry_msgs::PoseStamped>& plan){
@@ -77,8 +104,6 @@ namespace cob_navigation_followme_global {
     float step_y = diff_y / num_points;
     float step_yaw = diff_yaw / num_points;
 
-    plan.push_back(start);
-
     for (int i = 0; i < num_points; i++)
     {
         target_x = start_x + i * step_x;
@@ -106,47 +131,26 @@ namespace cob_navigation_followme_global {
     }
   }
 
-  void COBGlobalPlanner::makePlanFromTracker(std::vector<geometry_msgs::PoseStamped>& plan){
+  void COBGlobalPlanner::makePlanFromTracker(const geometry_msgs::PoseStamped& start, 
+          const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
     plan.clear();
-    for (int i = 0; i < cur_path.poses.size(); i++)
-        plan.push_back(cur_path.poses[i]);
+    for (int i = 0; i < poses.size(); i++) {
+        tf::Quaternion quat = tf::createQuaternionFromYaw(0.0); 
+        geometry_msgs::PoseStamped point = goal;
+        point.pose.position.x = poses[i].pose.position.x;
+        point.pose.position.y = poses[i].pose.position.y;
+        point.pose.position.z = poses[i].pose.position.z;
+        point.pose.orientation.x = quat.x();
+        point.pose.orientation.y = quat.y();
+        point.pose.orientation.z = quat.z();
+        point.pose.orientation.w = quat.w();
+        plan.push_back(point);
+    }
   }
  
-  void COBGlobalPlanner::pathCB(const nav_msgs::Path& path){
-    ROS_INFO("received path: %lu segment(-s)", path.poses.size());
-    /*
-    cur_path.header = path.header;
-    cur_path.clear();
-    for (int i = 0; i < path.poses.size(); i++)
-        cur_path.poses.push_back(path.poses[i]);
-    */
-    cur_path = path;
-  }
-  string Goal2Str(const geometry_msgs::PoseStamped& goal){
-      stringstream sstr;
-      sstr << '('
-          << goal.pose.position.x << ", "
-          << goal.pose.position.y << ", "
-          << goal.pose.position.z << ", "
-          << goal.pose.orientation.x << ", "
-          << goal.pose.orientation.y << ", "
-          << goal.pose.orientation.z << ", "
-          << goal.pose.orientation.w << ") ";
-      return sstr.str();
-  }
-  string Plan2Str(const std::vector<geometry_msgs::PoseStamped>& plan){
-    stringstream sstr;
-    for (int i = 0; i < plan.size(); i++)
-        sstr << '('
-             << plan[i].pose.position.x << ", "
-             << plan[i].pose.position.y << ", "
-             << plan[i].pose.position.z << ", "
-             << plan[i].pose.orientation.x << ", "
-             << plan[i].pose.orientation.y << ", "
-             << plan[i].pose.orientation.z << ", "
-             << plan[i].pose.orientation.w << ") ";
-    sstr << endl;
-    return sstr.str();
+  void COBGlobalPlanner::poseCB(const geometry_msgs::PoseStamped& pose){
+      ROS_INFO("GlobalPlanner received pose %s", Goal2Str(pose).c_str());
+      poses.push_back(pose);
   }
   COBGlobalPlanner::COBGlobalPlanner()
   : costmap_ros_(NULL), initialized_(false){}
@@ -165,7 +169,8 @@ namespace cob_navigation_followme_global {
       private_nh.param("step_size", step_size_, costmap_->getResolution());
       private_nh.param("min_dist_from_robot", min_dist_from_robot_, 0.10);
       world_model_ = new base_local_planner::CostmapModel(*costmap_); 
-      path_topic = private_nh.subscribe(FOLLOWME_PATH_TOPIC, 1, &COBGlobalPlanner::pathCB, this);
+      pose_topic = private_nh.subscribe(FOLLOWME_POSE_TOPIC, 1, &COBGlobalPlanner::poseCB, this);
+      path_log_topic = private_nh.advertise<nav_msgs::Path>(FOLLOWME_PATH_LOG_TOPIC, 5);
 
       initialized_ = true;
     }
@@ -194,22 +199,26 @@ namespace cob_navigation_followme_global {
   bool COBGlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, 
       const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
 
+    static int call_cnt;
     if(!initialized_){
       ROS_ERROR("The planner has not been initialized, must call initialize() first");
       return false;
     }
 
-    ROS_DEBUG("Got a start: %.2f, %.2f, and a goal: %.2f, %.2f", start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y);
+    ROS_INFO("Plan task: start (%.2f, %.2f) goal (%.2f, %.2f); poses received: %lu",
+             start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y, poses.size());
 
     plan.clear();
     costmap_ = costmap_ros_->getCostmap();
+    string global_frame = costmap_ros_->getGlobalFrameID();
 
-    if(goal.header.frame_id != costmap_ros_->getGlobalFrameID()){
+    if(goal.header.frame_id != global_frame){
       ROS_ERROR("This planner as configured will only accept goals in the %s frame, but a goal was sent in the %s frame.", 
-          costmap_ros_->getGlobalFrameID().c_str(), goal.header.frame_id.c_str());
+          global_frame.c_str(), goal.header.frame_id.c_str());
       return false;
     }
 
+<<<<<<< HEAD
     const char* prefix = " ";
     if (cur_path.poses.size() == 0) {
         makeLinearPlan(start, goal, plan);
@@ -221,6 +230,19 @@ namespace cob_navigation_followme_global {
     }
     //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
     ROS_INFO("%s plan from %s to %s: %s", prefix, Goal2Str(start).c_str(), Goal2Str(goal).c_str(), Plan2Str(plan).c_str());
+=======
+    if (poses.size() == 0)
+        makeLinearPlan(start, goal, plan);
+    else
+        makePlanFromTracker(start, goal, plan);
+    //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
+    nav_msgs::Path path_log_msg;
+    path_log_msg.header.stamp = ros::Time::now();
+    path_log_msg.poses = plan;
+    path_log_topic.publish(path_log_msg);
+    string plan_str = Plan2Str(plan);
+    ROS_INFO("Plan (len %lu): %s", plan.size(), plan_str.c_str());
+>>>>>>> 8edf29a3cba5fc746a438fbb3d063a019829063f
 
     return true;
   }
