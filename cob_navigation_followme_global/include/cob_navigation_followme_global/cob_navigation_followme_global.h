@@ -78,6 +78,7 @@ namespace cob_navigation_followme_global {
       std::vector<geometry_msgs::PoseStamped> poses;
       ros::Subscriber pose_topic;
       ros::Publisher path_log_topic;
+	  tf::TransformListener listener;
   };
 };  
 #endif

@@ -40,6 +40,8 @@
 #include <sstream>
 #include <math.h>
 #include <stdlib.h>
+#include <tf/transform_listener.h>
+
 
 using namespace std;
 
@@ -158,8 +160,20 @@ namespace cob_navigation_followme_global {
   }
  
   void COBGlobalPlanner::poseCB(const geometry_msgs::PoseStamped& pose){
-      ROS_INFO("GlobalPlanner received pose %s", Goal2Str(pose).c_str());
-      poses.push_back(pose);
+      ROS_INFO("GlobalPlanner received pose %s frame %s", Goal2Str(pose).c_str(), pose.header.frame_id.c_str());
+      string global_frame = costmap_ros_->getGlobalFrameID();
+      if (pose.header.frame_id != global_frame) {
+        try {
+          geometry_msgs::PoseStamped transformed_pose;
+          listener.transformPose(global_frame, ros::Time(0), pose, pose.header.frame_id, transformed_pose);
+          poses.push_back(transformed_pose);
+        }
+        catch (tf::TransformException ex) {
+          ROS_ERROR("%s:%s: TF Error %s", __FILE__, __func__, ex.what());
+        }
+      }
+      else
+	poses.push_back(pose);
   }
   COBGlobalPlanner::COBGlobalPlanner()
   : costmap_ros_(NULL), initialized_(false){}
@@ -173,6 +187,7 @@ namespace cob_navigation_followme_global {
     if(!initialized_){
       costmap_ros_ = costmap_ros;
       costmap_ = costmap_ros_->getCostmap();
+      string global_frame = costmap_ros_->getGlobalFrameID();
 
       ros::NodeHandle private_nh("~/" + name);
       private_nh.param("step_size", step_size_, costmap_->getResolution());
@@ -180,6 +195,7 @@ namespace cob_navigation_followme_global {
       world_model_ = new base_local_planner::CostmapModel(*costmap_); 
       pose_topic = private_nh.subscribe(FOLLOWME_POSE_TOPIC, 1, &COBGlobalPlanner::poseCB, this);
       path_log_topic = private_nh.advertise<nav_msgs::Path>(FOLLOWME_PATH_LOG_TOPIC, 5);
+      listener.waitForTransform("/base_link", global_frame, ros::Time(0), ros::Duration(1.0));
 
       initialized_ = true;
     }
@@ -214,23 +230,27 @@ namespace cob_navigation_followme_global {
       return false;
     }
 
-    ROS_INFO("Plan task: start (%.2f, %.2f) goal (%.2f, %.2f); poses received: %lu",
-             start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y, poses.size());
 
     plan.clear();
     costmap_ = costmap_ros_->getCostmap();
     string global_frame = costmap_ros_->getGlobalFrameID();
 
     if(goal.header.frame_id != global_frame){
-      ROS_ERROR("This planner as configured will only accept goals in the %s frame, but a goal was sent in the %s frame.", 
+      /*ROS_ERROR("This planner as configured will only accept goals in the %s frame, but a goal was sent in the %s frame.", 
           global_frame.c_str(), goal.header.frame_id.c_str());
-      return false;
+      return false;*/
     }
+
+    ROS_INFO("Plan task: start (%.2f, %.2f) goal (%.2f, %.2f), frames %s -> %s; poses received: %lu",
+             start.pose.position.x, start.pose.position.y, goal.pose.position.x, goal.pose.position.y,
+             goal.header.frame_id.c_str(), global_frame.c_str(), poses.size());
 
     if (poses.size() == 0)
         makeLinearPlan(start, goal, plan);
-    else
+    else {
         makePlanFromTracker(start, goal, plan);
+        poses.clear();
+    }
     //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
     nav_msgs::Path path_log_msg;
     path_log_msg.header.stamp = ros::Time::now();
