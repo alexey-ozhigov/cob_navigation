@@ -218,19 +218,6 @@ namespace cob_navigation_followme_global {
       return false;
     }
 
-<<<<<<< HEAD
-    const char* prefix = " ";
-    if (cur_path.poses.size() == 0) {
-        makeLinearPlan(start, goal, plan);
-        prefix = "Linear";
-    }
-    else {
-        makePlanFromTracker(plan);
-        prefix = "Tracked";
-    }
-    //we want to step back along the vector created by the robot's position and the goal pose until we find a legal cell
-    ROS_INFO("%s plan from %s to %s: %s", prefix, Goal2Str(start).c_str(), Goal2Str(goal).c_str(), Plan2Str(plan).c_str());
-=======
     if (poses.size() == 0)
         makeLinearPlan(start, goal, plan);
     else
@@ -242,7 +229,6 @@ namespace cob_navigation_followme_global {
     path_log_topic.publish(path_log_msg);
     string plan_str = Plan2Str(plan);
     ROS_INFO("Plan (len %lu): %s", plan.size(), plan_str.c_str());
->>>>>>> 8edf29a3cba5fc746a438fbb3d063a019829063f
 
     return true;
   }
