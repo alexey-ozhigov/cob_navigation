@@ -38,6 +38,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <string>
 #include <sstream>
+#include <math.h>
 #include <stdlib.h>
 
 using namespace std;
@@ -135,16 +136,24 @@ namespace cob_navigation_followme_global {
           const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
     plan.clear();
     for (int i = 0; i < poses.size(); i++) {
-        tf::Quaternion quat = tf::createQuaternionFromYaw(0.0); 
         geometry_msgs::PoseStamped point = goal;
-        point.pose.position.x = poses[i].pose.position.x;
-        point.pose.position.y = poses[i].pose.position.y;
-        point.pose.position.z = poses[i].pose.position.z;
-        point.pose.orientation.x = quat.x();
-        point.pose.orientation.y = quat.y();
-        point.pose.orientation.z = quat.z();
-        point.pose.orientation.w = quat.w();
-        plan.push_back(point);
+        point.pose.position = poses[i].pose.position;
+        if (i == poses.size() - 1)
+            point.pose.orientation = poses[i - 1].pose.orientation;
+        else {
+            const geometry_msgs::Point& prev_pose = poses[i - 1].pose.position;
+            const geometry_msgs::Point& cur_pose = point.pose.position;
+            geometry_msgs::Quaternion& cur_orient = point.pose.orientation;
+            float dx = prev_pose.x - cur_pose.x;
+            float dy = prev_pose.y - cur_pose.y;
+            float yaw = atan2f(dy, dx);
+            tf::Quaternion quat = tf::createQuaternionFromYaw(yaw); 
+            cur_orient.x = quat.x();
+            cur_orient.y = quat.y();
+            cur_orient.z = quat.z();
+            cur_orient.w = quat.w();
+            plan.push_back(point);
+        }
     }
   }
  
