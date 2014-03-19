@@ -74,10 +74,13 @@ namespace cob_navigation_followme_global {
       double footprintCost(double x_i, double y_i, double theta_i);
 
       bool initialized_;
+      void publishOrientationMarkers(const std::vector<geometry_msgs::PoseStamped>& plan, ros::Publisher& pub);
+      int markers_used;
       void poseCB(const geometry_msgs::PoseStamped& pose);
       std::vector<geometry_msgs::PoseStamped> poses;
       ros::Subscriber pose_topic;
       ros::Publisher path_log_topic;
+      ros::Publisher markers_topic;
 	  tf::TransformListener listener;
   };
 };  

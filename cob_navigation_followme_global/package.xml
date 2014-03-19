@@ -20,6 +20,7 @@ from people tracking node, and plans a path to follow for the move_base node.
     <build_depend>tf</build_depend>
     <build_depend>eigen</build_depend>
     <build_depend>std_msgs</build_depend>
+    <build_depend>visualization_msgs</build_depend>
 
     <run_depend>roscpp</run_depend>
     <run_depend>costmap_2d</run_depend>
@@ -29,6 +30,7 @@ from people tracking node, and plans a path to follow for the move_base node.
     <run_depend>tf</run_depend>
     <run_depend>eigen</run_depend>
     <run_depend>std_msgs</run_depend>
+    <run_depend>visualization_msgs</run_depend>
 
     <export>
         <nav_core plugin="${prefix}/bgp_plugin.xml" />
