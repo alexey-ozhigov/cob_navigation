@@ -136,25 +136,53 @@ namespace cob_navigation_followme_global {
   void COBGlobalPlanner::makePlanFromTracker(const geometry_msgs::PoseStamped& start, 
           const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
     plan.clear();
+    if (poses.size() == 0) {
+        ROS_ERROR("Poses array is empty");
+        return;
+    }
+    //Always add current robot pose as the first point in the path
+    geometry_msgs::PoseStamped robot_pose;
+    tf::Stamped<tf::Pose> tf_robot_pose;
+    if (! costmap_ros_->getRobotPose(tf_robot_pose)) {
+        ROS_ERROR("move_base cannot make a plan for you because it could not get the start pose of the robot");
+        return;
+    }
+    tf::poseStampedTFToMsg(tf_robot_pose, robot_pose);
+    geometry_msgs::PoseStamped point = goal;
+    point.pose.position = robot_pose.pose.position;
+    const geometry_msgs::Point& cur_pose = robot_pose.pose.position;
+    const geometry_msgs::Point& next_pose = poses[0].pose.position;
+    geometry_msgs::Quaternion& cur_orient = point.pose.orientation;
+    float dx = next_pose.x - cur_pose.x;
+    float dy = next_pose.y - cur_pose.y;
+    float yaw = atan2f(dy, dx);
+    tf::Quaternion quat = tf::createQuaternionFromYaw(yaw); 
+    cur_orient.x = quat.x();
+    cur_orient.y = quat.y();
+    cur_orient.z = quat.z();
+    cur_orient.w = quat.w();
+    plan.push_back(point);
+
+
     for (int i = 0; i < poses.size(); i++) {
         geometry_msgs::PoseStamped point = goal;
         point.pose.position = poses[i].pose.position;
         if (i == poses.size() - 1)
-            point.pose.orientation = poses[i - 1].pose.orientation;
+            point.pose.orientation = plan[i - 1].pose.orientation;
         else {
-            const geometry_msgs::Point& prev_pose = poses[i - 1].pose.position;
             const geometry_msgs::Point& cur_pose = point.pose.position;
+            const geometry_msgs::Point& next_pose = poses[i + 1].pose.position;
             geometry_msgs::Quaternion& cur_orient = point.pose.orientation;
-            float dx = prev_pose.x - cur_pose.x;
-            float dy = prev_pose.y - cur_pose.y;
+            float dx = next_pose.x - cur_pose.x;
+            float dy = next_pose.y - cur_pose.y;
             float yaw = atan2f(dy, dx);
             tf::Quaternion quat = tf::createQuaternionFromYaw(yaw); 
             cur_orient.x = quat.x();
             cur_orient.y = quat.y();
             cur_orient.z = quat.z();
             cur_orient.w = quat.w();
-            plan.push_back(point);
         }
+        plan.push_back(point);
     }
   }
  
